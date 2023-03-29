@@ -25,17 +25,21 @@ int main() {
     PrintConsole debug_console;
 #endif
 
+    // Initialize graphics and file system
     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
     fsInit();
     archiveMountSdmc();
 
 #if DEBUGLEVEL == 0
+    // Initialize debug console if DEBUGLEVEL is 0
     consoleInit(GFX_BOTTOM, &debug_console);
     consoleSetWindow(&debug_console, 0, 4, 40, 26);
     debug_console.flags = CONSOLE_COLOR_FAINT;
 #endif
+    // Initialize main console
     consoleInit(GFX_BOTTOM, &main_console);
 
+    // Load default options and save if necessary
     setDefaults();
     if (loadFileOptions() < 0)
         saveFileOptions();
@@ -49,15 +53,18 @@ int main() {
     consoleDebugInit(debugDevice_3DMOO);
 #endif
 
+    // Initialize Virtual Boy DSP and sound
     V810_DSP_Init();
     sound_init();
 
+    // Enable or disable 3D mode based on user settings
     if (tVBOpt.DSPMODE == DM_3D) {
         gfxSet3D(true);
     } else {
         gfxSet3D(false);
     }
 
+    // Load ROM and set up emulator
     if (fileSelect("Load ROM", rom_name, "vb") < 0)
         goto exit;
     strncat(full_path, rom_name, 256);
@@ -67,17 +74,22 @@ int main() {
         goto exit;
     }
 
+    // Reset the emulator and initialize DRC
     v810_reset();
     drc_init();
 
+    // Clear cache and console
     clearCache();
     consoleClear();
 
+    // Enable speedup
     osSetSpeedupEnable(true);
 
+    // Main loop
     while(aptMainLoop()) {
         uint64_t startTime = osGetTime();
 
+        // Scan input and check for touch input
         hidScanInput();
         int keys = hidKeysDown();
 
@@ -88,6 +100,7 @@ int main() {
             }
         }
 
+        // Run emulation and display frames
         for (qwe = 0; qwe <= tVBOpt.FRMSKIP; qwe++) {
 #if DEBUGLEVEL == 0
             consoleSelect(&debug_console);
@@ -125,12 +138,14 @@ int main() {
         printf("\x1b[1J\x1b[0;0HFrame: %i\nPC: 0x%x", frame, (unsigned int) v810_state->PC);
 #endif
 
+        // Flush and swap buffers
         gfxFlushBuffers();
         gfxSwapBuffers();
         gspWaitForVBlank();
     }
 
 exit:
+    // Clean up and exit
     v810_exit();
     V810_DSP_Quit();
     sound_close();
